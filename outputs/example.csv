@@ -1,0 +1,3 @@
+id,phenotype_file
+BMI,/path/to/phenotype_file/BMI.txt
+WHR,/path/to/phenotype_file/WHR.txt
