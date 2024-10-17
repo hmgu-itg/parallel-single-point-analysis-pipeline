@@ -1,0 +1,79 @@
+include: "rules/setup.smk"
+from pathlib import Path
+
+import yaml
+import pandas as pd
+
+
+def input_all(w):
+    run_list = pd.read_csv(f'outputs/{w.tree}.csv')
+
+    if run_list.shape[0] != run_list['id'].drop_duplicates().shape[0]:
+        raise BaseError('Duplicate "id" rows detected. Exiting.')
+
+    required_columns = {'id', 'phenotype_file'}
+    columns = set(run_list.columns).intersection(required_columns)
+    missing_columns = required_columns.difference(columns)
+    if missing_columns:
+        raise BaseError(f"Required columns in input.csv file missing ({', '.join(missing_columns)})")
+
+    return [f"outputs/{w.tree}/{_id}/done" for _id in run_list['id']]
+
+
+rule all:
+    input:
+        input_all
+    output:
+        touch('outputs/{tree}/.done')
+
+
+rule create_config:
+    input:
+        config_base=rules.create_base_config.output[0],
+        run_sheet='outputs/{tree}.csv'
+    output:
+        'outputs/{tree}/{id}.yaml'
+    run:
+        with open(input.config_base, 'r') as f:
+            base_config = yaml.safe_load(f)
+
+        run_list = pd.read_csv(input[0])
+
+        record = run_list.loc[run_list['id']==wildcards.id].iloc[0]
+        config_obj = dict(base_config) # Just in case updating base_config itself might cause trouble when running in parallel
+        config_obj.update(record.to_dict())
+        with open(output[0], 'w') as f:
+            yaml.safe_dump(config_obj, f, encoding="utf-8")
+
+
+rule run:
+    input:
+        snakefile=rules.clone_basepipeline.output.basepipeline_snakefile,
+        config=rules.create_config.output[0]
+    params:
+        singularity_args=lambda w: config['singularity-args'] # Use lambda so that snakemake doesn't check whether the config key exists unless the rule is actually being executed
+    threads:
+        lambda w: workflow.cores // config['jobs'] # Add a config to split the number of parallel runs
+    resources:
+        job_mem_mb=lambda w: config['mem_mb'] // config['jobs'],
+        rate_limit_split_mem_mb=lambda w: (config['mem_mb'] // config['jobs']) // 10
+    output:
+        'outputs/{tree}/{id}/done'
+    log:
+        'outputs/{tree}/{id}/snakemake.log'
+    shell: '''
+        snakemake \
+          --cores {threads} \
+          --configfile {input.config} \
+          --snakefile {input.snakefile} \
+          --default-resources mem_mb={resources.rate_limit_split_mem_mb} \
+          --resources \
+            mem_mb={resources.job_mem_mb} \
+            rate_limit=10 \
+          --use-singularity \
+          --singularity-args="{params.singularity_args}" \
+          --rerun-incomplete \
+          --keep-going \
+          --nolock \
+          {output} > {log} 2>&1
+    '''
