@@ -1,5 +1,5 @@
 .snakemake
-.containers/*
+containers/*
 outputs/*
 
 single-point-analysis-pipeline

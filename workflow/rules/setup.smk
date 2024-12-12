@@ -18,7 +18,7 @@ rule pull_container:
     input:
         lambda w: checkpoints.clone_basepipeline.get().rule.params.configfile
     shell: '''
-        URI=$(grep -o '"[^"]*"' {input} | grep "{params}")
+        URI=$(grep -o '"[^"]*"' {input} | grep "{params}" | sed 's/^"//;s/"$//')
         if command -v apptainer &> /dev/null; then
             # apptainer is available
             apptainer pull {output} $URI
