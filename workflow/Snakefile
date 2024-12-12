@@ -48,7 +48,7 @@ rule create_config:
 
 rule run:
     input:
-        snakefile=rules.clone_basepipeline.output.basepipeline_snakefile,
+        snakefile=rules.clone_basepipeline.params.basepipeline_snakefile,
         config=rules.create_config.output[0]
     params:
         singularity_args=lambda w: config['singularity-args'] # Use lambda so that snakemake doesn't check whether the config key exists unless the rule is actually being executed

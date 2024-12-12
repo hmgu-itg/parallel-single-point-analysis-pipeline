@@ -3,8 +3,10 @@ import yaml
 import shutil
 
 
-rule clone_basepipeline:
+checkpoint clone_basepipeline:
     output:
+        directory('single-point-analysis-pipeline')
+    params:
         configfile='single-point-analysis-pipeline/config.yaml',
         basepipeline_snakefile='single-point-analysis-pipeline/workflow/Snakefile'
     shell: '''
@@ -14,10 +16,16 @@ rule clone_basepipeline:
 
 rule pull_container:
     input:
-        rules.clone_basepipeline.output.configfile
+        lambda w: checkpoints.clone_basepipeline.get().rule.params.configfile
     shell: '''
         URI=$(grep -o '"[^"]*"' {input} | grep "{params}")
-        apptainer pull {output} $URI 
+        if command -v apptainer &> /dev/null; then
+            # apptainer is available
+            apptainer pull {output} $URI
+        else
+            # apptainer not found, fall back to singularity
+            singularity pull {output} $URI
+        fi
     '''
 
 
@@ -36,7 +44,7 @@ use rule pull_container as pull_manqq_container with:
 
 rule create_base_config:
     input:
-        orig_configfile=rules.clone_basepipeline.output.configfile,
+        orig_configfile=lambda w: checkpoints.clone_basepipeline.get().rule.params.configfile,
         main_container=rules.pull_main_container.output,
         pp_container=rules.pull_peakplotter_container.output,
         manqq_container=rules.pull_manqq_container.output
