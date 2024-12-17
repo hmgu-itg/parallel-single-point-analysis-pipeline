@@ -45,24 +45,24 @@ use rule pull_container as pull_manqq_container with:
 rule create_base_config:
     input:
         orig_configfile=lambda w: checkpoints.clone_basepipeline.get().rule.params.configfile,
-        main_container=rules.pull_main_container.output,
-        pp_container=rules.pull_peakplotter_container.output,
-        manqq_container=rules.pull_manqq_container.output
+        main_container=rules.pull_main_container.output[0],
+        pp_container=rules.pull_peakplotter_container.output[0],
+        manqq_container=rules.pull_manqq_container.output[0]
     output:
         'config-base.yaml'
     run:
         shutil.copy(input.orig_configfile, output[0])
         with open(output[0], 'r') as f:
             config = yaml.safe_load(f)
+        
+        with open(output[0], 'r') as f:
             content = f.read()
 
         main_url = config['container']['all']
         pp_url = config['container']['peakplotter']
         manqq_url = config['container']['manqq']
-
-        modified_content = content.replace(main_url, Path(input.main_container).resolve())
-        modified_content = modified_content.replace(pp_url, Path(input.pp_container).resolve())
-        modified_content = modified_content.replace(manqq_url, Path(input.manqq_container).resolve())
-
-        with open('config-base.yaml', 'w') as f:
+        modified_content = content.replace(main_url, str(Path(input.main_container).resolve()))
+        modified_content = modified_content.replace(pp_url, str(Path(input.pp_container).resolve()))
+        modified_content = modified_content.replace(manqq_url, str(Path(input.manqq_container).resolve()))
+        with open(output[0], 'w') as f:
             f.write(modified_content)
