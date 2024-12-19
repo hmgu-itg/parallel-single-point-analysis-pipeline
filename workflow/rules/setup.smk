@@ -5,12 +5,15 @@ import shutil
 
 checkpoint clone_basepipeline:
     output:
-        directory('single-point-analysis-pipeline')
+        directory('single-point-analysis-pipeline'),
+        scripts_symlink=directory('workflow/scripts')
     params:
         configfile='single-point-analysis-pipeline/config.yaml',
-        basepipeline_snakefile='single-point-analysis-pipeline/workflow/Snakefile'
+        basepipeline_snakefile='single-point-analysis-pipeline/workflow/Snakefile',
+        basepipeline_scripts_dir='single-point-analysis-pipeline/workflow/scripts'
     shell: '''
         git clone https://github.com/hmgu-itg/single-point-analysis-pipeline.git
+        ln -s $(realpath {params.basepipeline_scripts_dir}) {output.scripts_symlink}
     '''
 
 

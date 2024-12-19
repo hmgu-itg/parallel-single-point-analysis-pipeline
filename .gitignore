@@ -2,6 +2,9 @@
 containers/*
 outputs/*
 
-single-point-analysis-pipeline
 
+# The below directories and files are those created from rules in the `setup.smk` snakefile, so we ignore
+single-point-analysis-pipeline
+workflow/scripts
+config-base.yaml
 
